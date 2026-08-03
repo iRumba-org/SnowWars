@@ -11,8 +11,15 @@ config_version=5
 [application]
 
 config/name="GodotClientServer"
+run/main_scene="res://scenes/Level.tscn"
 config/features=PackedStringArray("4.7")
 config/icon="res://assets/icon.svg"
+
+[layer_names]
+
+2d_physics/layer_1="Border"
+2d_physics/layer_2="Player"
+2d_physics/layer_3="PlayerBullet"
 
 [rendering]
 
