@@ -9,20 +9,11 @@ const MAX_CLIENTS := 16
 const LOCAL_PEER_ID := 1
 
 const LEVEL_SCENE := preload("res://shared/scenes/Level.tscn")
-const SERVER_CALCULATION_SCENE := preload("res://server/scenes/ServerCalculation.tscn")
-const LOCAL_CALCULATION_SCENE := preload("res://server/scenes/LocalCalculation.tscn")
-const CLIENT_CALCULATION_SCENE := preload("res://client/scenes/ClientCalculation.tscn")
-const VIEW_SCENE := preload("res://client/scenes/View.tscn")
 
 # --- State ---------------------------------------------------------------
 
 enum Mode { NONE, SERVER, CLIENT, LOCAL }
 var mode: Mode = Mode.NONE
-
-var _server_calculations: Dictionary = {} # peer_id:int -> CalculationBase (ServerCalculation/LocalCalculation)
-
-var _client_calculations: Dictionary = {} # peer_id:int -> ClientCalculation
-var _views: Dictionary = {}               # peer_id:int -> View
 
 # --- Public API запуска (вызывается из Launcher) --------------------------
 
@@ -122,7 +113,7 @@ func _setup_server_info() -> void:
 	info.name = "serverInfo"
 	get_tree().root.add_child(info)
 
-func _get_server_game_root() -> Node:
+func _get_server_game_root() -> LevelBase:
 	match mode:
 		Mode.SERVER:
 			return get_node("/root/Game/Level")
@@ -130,7 +121,7 @@ func _get_server_game_root() -> Node:
 			return get_node("/root/globalServer/game")
 	return null
 
-func _get_visual_game_root() -> Node:
+func _get_visual_game_root() -> LevelBase:
 	match mode:
 		Mode.CLIENT:
 			return get_node("/root/Game/Level")
@@ -152,47 +143,17 @@ func _on_server_disconnected() -> void:
 # --- Подключение/отключение (сервер) ---------------------------------------
 
 func _on_peer_connected(peer_id: int) -> void:
-	var calculation := _spawn_authoritative_calculation(peer_id)
+	var calculation := _get_server_game_root().spawn_authoritative_calculation(peer_id)
 	match mode:
 		Mode.SERVER:
-			receive_player_roster.rpc_id(peer_id, _build_roster())
+			receive_player_roster.rpc_id(peer_id, _get_server_game_root().build_roster())
 			spawn_visual_player.rpc(peer_id, calculation.global_position, calculation.rotation)
 		Mode.LOCAL:
-			_ensure_local_view(peer_id)
+			_get_visual_game_root().ensure_local_view(peer_id, calculation)
 
 func _on_peer_disconnected(peer_id: int) -> void:
-	_despawn_authoritative_calculation(peer_id)
+	_get_server_game_root().despawn_authoritative_calculation(peer_id)
 	despawn_visual_player.rpc(peer_id)
-
-func _spawn_authoritative_calculation(peer_id: int) -> CalculationBase:
-	var calculation: CalculationBase
-	match mode:
-		Mode.SERVER:
-			calculation = SERVER_CALCULATION_SCENE.instantiate()
-		Mode.LOCAL:
-			calculation = LOCAL_CALCULATION_SCENE.instantiate()
-	calculation.name = "Player_%d" % peer_id
-	calculation.peer_id = peer_id
-	_server_calculations[peer_id] = calculation
-	_get_server_game_root().add_child(calculation)
-	return calculation
-
-func _despawn_authoritative_calculation(peer_id: int) -> void:
-	var calculation: CalculationBase = _server_calculations.get(peer_id)
-	if calculation:
-		calculation.queue_free()
-	_server_calculations.erase(peer_id)
-
-func _build_roster() -> Array:
-	var roster: Array = []
-	for peer_id in _server_calculations.keys():
-		var calculation: CalculationBase = _server_calculations[peer_id]
-		roster.append({
-			"peer_id": peer_id,
-			"position": calculation.global_position,
-			"rotation": calculation.rotation,
-		})
-	return roster
 
 # --- Мировое состояние: сервер → клиенты ------------------------------------
 
@@ -202,8 +163,9 @@ func _physics_process(_delta: float) -> void:
 
 func _broadcast_world_state() -> void:
 	var states: Dictionary = {}
-	for peer_id in _server_calculations.keys():
-		var calculation: CalculationBase = _server_calculations[peer_id]
+	var calculations := _get_server_game_root().get_server_calculations()
+	for peer_id in calculations.keys():
+		var calculation: CalculationBase = calculations[peer_id]
 		states[peer_id] = {
 			"position": calculation.global_position,
 			"rotation": calculation.rotation,
@@ -216,9 +178,10 @@ func push_world_state(states: Dictionary) -> void:
 
 func _apply_world_state(states: Dictionary) -> void:
 	var now := Time.get_ticks_msec()
+	var visual_root := _get_visual_game_root()
 	for peer_id in states.keys():
 		var state: Dictionary = states[peer_id]
-		var calculation: ClientCalculation = _client_calculations.get(peer_id)
+		var calculation: ClientCalculation = visual_root.get_client_calculation(peer_id)
 		if calculation:
 			calculation.receive_snapshot(state.position, state.rotation, now)
 
@@ -227,56 +190,15 @@ func _apply_world_state(states: Dictionary) -> void:
 @rpc("authority", "reliable")
 func receive_player_roster(roster: Array) -> void:
 	for entry in roster:
-		_ensure_client_view(entry.peer_id, entry.position, entry.rotation)
+		_get_visual_game_root().ensure_client_view(entry.peer_id, entry.position, entry.rotation)
 
 @rpc("authority", "reliable")
 func spawn_visual_player(peer_id: int, position: Vector2, rotation: float) -> void:
-	_ensure_client_view(peer_id, position, rotation)
+	_get_visual_game_root().ensure_client_view(peer_id, position, rotation)
 
 @rpc("authority", "reliable")
 func despawn_visual_player(peer_id: int) -> void:
-	_remove_client_view(peer_id)
-
-func _ensure_local_view(peer_id: int) -> void:
-	if _views.has(peer_id):
-		return
-	var calculation: LocalCalculation = _server_calculations.get(peer_id)
-	if not calculation:
-		return
-
-	var view: View = VIEW_SCENE.instantiate()
-	view.name = "Player_%d_View" % peer_id
-	_get_visual_game_root().add_child(view)
-	view.set_calculation(calculation)
-	_views[peer_id] = view
-
-func _ensure_client_view(peer_id: int, position: Vector2, rotation: float) -> void:
-	if _client_calculations.has(peer_id):
-		return
-	var calculation: ClientCalculation = CLIENT_CALCULATION_SCENE.instantiate()
-	calculation.name = "Player_%d" % peer_id
-	calculation.peer_id = peer_id
-	calculation.global_position = position
-	calculation.rotation = rotation
-	_get_visual_game_root().add_child(calculation)
-	_client_calculations[peer_id] = calculation
-
-	var view: View = VIEW_SCENE.instantiate()
-	view.name = "Player_%d_View" % peer_id
-	_get_visual_game_root().add_child(view)
-	view.set_calculation(calculation)
-	_views[peer_id] = view
-
-func _remove_client_view(peer_id: int) -> void:
-	var calculation: ClientCalculation = _client_calculations.get(peer_id)
-	if calculation:
-		calculation.queue_free()
-	_client_calculations.erase(peer_id)
-
-	var view: View = _views.get(peer_id)
-	if view:
-		view.queue_free()
-	_views.erase(peer_id)
+	_get_visual_game_root().remove_client_view(peer_id)
 
 func get_local_peer_id() -> int:
 	if mode == Mode.LOCAL:
@@ -289,5 +211,5 @@ func get_local_peer_id() -> int:
 
 func get_known_player_ids() -> Array:
 	if mode == Mode.SERVER or mode == Mode.LOCAL:
-		return _server_calculations.keys()
-	return _client_calculations.keys()
+		return _get_server_game_root().get_server_calculations().keys()
+	return _get_visual_game_root().get_client_calculations().keys()

@@ -121,20 +121,58 @@ RPC `spawn_snowball`/`snowball_hit`, `on_server_snowball_hit` и общим сл
   молча теряется, но `SnowBullet` не "зависает" — он самостоятельно детектит столкновения
   независимо от RPC.
 
+### Этап 3 — ростер игроков перенесён из `Net` в `LevelBase`
+
+Раньше `Net` единолично владел ростером игроков: три словаря
+(`_server_calculations`/`_client_calculations`/`_views`) и вся логика их спавна/деспавна/
+поиска жили в `net.gd`, хотя концептуально это состав игроков конкретного поля боя, а не
+сетевого слоя. Теперь этим владеет `LevelBase` (`shared/scripts/level_base.gd`), а `Net`
+остался тонким слоем управления режимом (`SERVER`/`CLIENT`/`LOCAL`) и точками входа RPC.
+
+Ключевое наблюдение, снявшее риск архитектурной путаницы: в рантайме любой экземпляр
+`Level` — это либо авторитетный корень (`/root/Game/Level` на SERVER,
+`/root/globalServer/game` на LOCAL), либо визуальный корень (`/root/Game/Level` на CLIENT,
+`/root/visual/currentGame` на LOCAL) — никогда не оба одновременно, даже в LOCAL-режиме, где
+это два разных инстанса сцены `Level.tscn`. Поэтому один класс `LevelBase` безопасно владеет
+методами обеих ролей — для конкретного инстанса используется только одна половина API.
+
+- **Авторитетная половина** `LevelBase`: `spawn_authoritative_calculation(peer_id)`,
+  `despawn_authoritative_calculation(peer_id)`, `build_roster()`, `get_server_calculations()`.
+- **Визуальная половина** `LevelBase`: `ensure_client_view(peer_id, position, rotation)`,
+  `ensure_local_view(peer_id, calculation)`, `remove_client_view(peer_id)`,
+  `get_client_calculation(peer_id)`, `get_client_calculations()`.
+- Сигнатура `ensure_local_view` не 1-в-1 со старым `Net._ensure_local_view(peer_id)`: теперь
+  она принимает уже готовый `calculation` явным параметром, а не достаёт его сама из словаря
+  — потому что в LOCAL-режиме визуальный и авторитетный `Level` это два разных объекта дерева
+  без доступа к чужим словарям. `Net._on_peer_connected` передаёт значение, возвращённое
+  `spawn_authoritative_calculation(...)`.
+- `Net._get_server_game_root()`/`_get_visual_game_root()` теперь типизированы как `LevelBase`
+  (было `Node`) — только аннотация типа, поведение то же.
+- `Net.get_known_player_ids()` (публичный, используется `server/scripts/server_info.gd`) не
+  поменял сигнатуру, но внутри делегирует в `get_server_calculations()`/
+  `get_client_calculations()` вместо прямого чтения своих бывших словарей.
+- Осознанно не тронуто: владение снежками (`_next_shot_id_counter`/`_visual_snowballs` в
+  `ServerCalculation`/`LocalCalculation`/`ClientCalculation`) и то, кто создаёт контейнеры
+  `Game`/`globalServer`/`visual` (`_setup_server_game`/`_setup_client_visual` остались в
+  `Net`) — чтобы не смешивать несколько независимых рефакторингов в одном ревью.
+- Разделение `LevelBase` на подклассы `AuthoritativeLevel`/`VisualLevel` рассмотрено и
+  отложено: один класс с обеими половинками API достаточен, пока методы не начали заметно
+  мешать друг другу.
+- **Не проверено вручную/headless в реальном Godot** — на машине, где выполнялся рефакторинг,
+  не найден Godot CLI в PATH. Проверена только статика (сверка с планом, grep на битые ссылки
+  на удалённые приватные члены `Net` — не найдено). Перед тем как считать этап полностью
+  закрытым, стоит вручную прогнать все три режима (SERVER+CLIENT, LOCAL) в редакторе.
+
 ## Осталось
 
 Ниже — кандидаты на следующие этапы. Порядок и состав **не согласованы окончательно**.
 
-1. **`Game`/`Level` как оркестратор спавна вместо `Net`.** На раннем этапе обсуждения
-   дизайна (до того, как остановились на `CalculationBase`) рассматривалась идея, что узел
-   `Game` владеет загрузкой, а `Level` — ростером игроков и их спавном. Для этапа 1 эта идея
-   осознанно отложена в пользу того, чтобы оркестратором спавна оставался `Net` — чтобы не
-   смешивать в одном ревью два независимых рефакторинга (разделение Calculation/View и смену
-   владельца оркестрации). `Net` по-прежнему хранит `_server_calculations`/
-   `_client_calculations`/`_views` и сам вызывает `_spawn_authoritative_calculation`/
-   `_ensure_client_view`/`_ensure_local_view`. Открытый вопрос на будущее: если этим
-   заняться, стоит ли заодно перенести туда же владение снежками (снежок логически скорее
-   принадлежит `Level`/полю боя, а не отдельному игроку).
+1. **Владение снежками на `Level`.** Открытый вопрос, поднятый на этапе 3 и сознательно
+   отложенный: перенести ли счётчик `shot_id` и словарь визуальных `SnowBullet` с
+   per-player Calculation-классов на `Level`/поле боя, аналогично тому, как на этапе 3
+   туда переехал ростер игроков. Потребует либо глобального счётчика выстрелов, либо
+   составного ключа (`peer_id` + `shot_id`), т.к. сейчас `shot_id` уникален только в
+   пределах одного стрелка.
 2. **Рассмотренная и отклонённая альтернатива (для справки)**: использовать
    высокоуровневые `MultiplayerSpawner`/`MultiplayerSynchronizer` вместо ручных RPC.
    Отклонено, потому что потребовало бы слияния `ServerCalculation`/`ClientCalculation`
