@@ -1,6 +1,7 @@
 class_name ControllerBase
 extends Node2D
 
+@warning_ignore("unused_signal")
 signal shoot_requested
 
 func get_move_vector() -> Vector2:

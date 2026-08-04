@@ -10,11 +10,6 @@ func get_move_vector() -> Vector2:
 func get_aim_angle() -> float:
 	return _aim_angle
 
-@rpc("any_peer", "unreliable_ordered")
-func submit_move_state(move_vector: Vector2, aim_angle: float) -> void:
+func set_state(move_vector: Vector2, aim_angle: float) -> void:
 	_move_vector = move_vector
 	_aim_angle = aim_angle
-
-@rpc("any_peer", "reliable")
-func submit_shoot() -> void:
-	shoot_requested.emit()
