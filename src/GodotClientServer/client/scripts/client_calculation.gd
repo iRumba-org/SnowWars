@@ -51,3 +51,22 @@ func request_move_state(move_vector: Vector2, aim_angle: float) -> void:
 func submit_move_state(_move_vector: Vector2, _aim_angle: float) -> void:
 	pass  # тело не используется — исходящий вызов резолвится в одноимённый
 	      # метод ServerCalculation на том же пути на сервере
+
+var _visual_snowballs: Dictionary = {}   # shot_id:int -> SnowBullet node
+
+func request_shoot() -> void:
+	submit_shoot.rpc_id(1)
+
+@rpc("any_peer", "reliable")
+func submit_shoot() -> void:
+	pass  # тело не используется — исходящий вызов резолвится в одноимённый
+	      # метод ServerCalculation на том же пути на сервере
+
+@rpc("authority", "reliable")
+func spawn_snowball(shot_id: int, direction: Vector2, speed: float) -> void:
+	var origin := global_position + direction * CalculationSnowball.BULLET_SPAWN_OFFSET
+	_visual_snowballs[shot_id] = CalculationSnowball.spawn_visual_snowball(Net._get_visual_game_root(), origin, direction, speed)
+
+@rpc("authority", "reliable")
+func snowball_hit(shot_id: int, hit_position: Vector2) -> void:
+	CalculationSnowball.finalize_visual_hit(_visual_snowballs, shot_id, hit_position)

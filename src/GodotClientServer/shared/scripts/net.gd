@@ -7,17 +7,12 @@ const LOBBY_NAME := "default"       # единственное место, гд�
 const DEFAULT_PORT := 4433
 const MAX_CLIENTS := 16
 const LOCAL_PEER_ID := 1
-const THROW_DELAY_SEC := 0.4        # точка расширения под будущие типы оружия
-const SNOWBALL_SPEED := 600.0
-const BULLET_SPAWN_OFFSET := 45.0
 
 const LEVEL_SCENE := preload("res://shared/scenes/Level.tscn")
 const SERVER_CALCULATION_SCENE := preload("res://server/scenes/ServerCalculation.tscn")
 const LOCAL_CALCULATION_SCENE := preload("res://server/scenes/LocalCalculation.tscn")
 const CLIENT_CALCULATION_SCENE := preload("res://client/scenes/ClientCalculation.tscn")
 const VIEW_SCENE := preload("res://client/scenes/View.tscn")
-const SERVER_SNOWBALL_SCENE := preload("res://server/scenes/ServerSnowball.tscn")
-const SNOW_BULLET_SCENE := preload("res://client/scenes/SnowBullet.tscn")
 
 # --- State ---------------------------------------------------------------
 
@@ -25,11 +20,9 @@ enum Mode { NONE, SERVER, CLIENT, LOCAL }
 var mode: Mode = Mode.NONE
 
 var _server_calculations: Dictionary = {} # peer_id:int -> CalculationBase (ServerCalculation/LocalCalculation)
-var _next_shot_id_counter: int = 0
 
 var _client_calculations: Dictionary = {} # peer_id:int -> ClientCalculation
 var _views: Dictionary = {}               # peer_id:int -> View
-var _visual_snowballs: Dictionary = {}    # shot_id:int -> SnowBullet node
 
 # --- Public API запуска (вызывается из Launcher) --------------------------
 
@@ -201,19 +194,6 @@ func _build_roster() -> Array:
 		})
 	return roster
 
-# --- Выстрел ------------------------------------------------------------------
-
-func request_shoot() -> void:
-	match mode:
-		Mode.LOCAL:
-			_apply_shoot(LOCAL_PEER_ID)
-		Mode.CLIENT:
-			submit_shoot.rpc_id(1)
-
-@rpc("any_peer", "reliable")
-func submit_shoot() -> void:
-	_apply_shoot(multiplayer.get_remote_sender_id())
-
 # --- Мировое состояние: сервер → клиенты ------------------------------------
 
 func _physics_process(_delta: float) -> void:
@@ -304,76 +284,6 @@ func get_local_peer_id() -> int:
 	if multiplayer.multiplayer_peer != null:
 		return multiplayer.get_unique_id()
 	return LOCAL_PEER_ID
-
-# --- Выстрел / снежки ---------------------------------------------------------
-
-func _apply_shoot(peer_id: int) -> void:
-	await get_tree().create_timer(THROW_DELAY_SEC).timeout
-
-	var calculation: CalculationBase = _server_calculations.get(peer_id)
-	if not calculation:
-		return
-
-	var shot_id := _next_shot_id()
-	var direction := Vector2.UP.rotated(calculation.rotation)
-	var origin := calculation.global_position + direction * BULLET_SPAWN_OFFSET
-	_spawn_server_snowball(shot_id, origin, direction, SNOWBALL_SPEED, peer_id)
-
-	match mode:
-		Mode.SERVER:
-			spawn_snowball.rpc(shot_id, peer_id, origin, direction, SNOWBALL_SPEED)
-		Mode.LOCAL:
-			_apply_spawn_snowball(shot_id, peer_id, origin, direction, SNOWBALL_SPEED)
-
-func _next_shot_id() -> int:
-	_next_shot_id_counter += 1
-	return _next_shot_id_counter
-
-func _spawn_server_snowball(shot_id: int, origin: Vector2, direction: Vector2, speed: float, shooter_peer_id: int) -> void:
-	var snowball: ServerSnowball = SERVER_SNOWBALL_SCENE.instantiate()
-	snowball.shot_id = shot_id
-	snowball.shooter_peer_id = shooter_peer_id
-	snowball.direction = direction
-	snowball.speed = speed
-	snowball.global_position = origin
-	_get_server_game_root().add_child(snowball)
-
-func on_server_snowball_hit(snowball: ServerSnowball) -> void:
-	if not is_instance_valid(snowball):
-		return
-	match mode:
-		Mode.SERVER:
-			snowball_hit.rpc(snowball.shot_id, snowball.global_position)
-		Mode.LOCAL:
-			_apply_snowball_hit(snowball.shot_id, snowball.global_position)
-	snowball.queue_free()
-
-@rpc("authority", "reliable")
-func spawn_snowball(shot_id: int, shooter_peer_id: int, origin: Vector2, direction: Vector2, speed: float) -> void:
-	_apply_spawn_snowball(shot_id, shooter_peer_id, origin, direction, speed)
-
-func _apply_spawn_snowball(shot_id: int, shooter_peer_id: int, origin: Vector2, direction: Vector2, speed: float) -> void:
-	var spawn_origin := origin
-	var shooter: CalculationBase = _client_calculations.get(shooter_peer_id)
-	if shooter:
-		spawn_origin = shooter.global_position + direction * BULLET_SPAWN_OFFSET
-	var bullet := SNOW_BULLET_SCENE.instantiate()
-	bullet.direction = direction
-	bullet.speed = speed
-	bullet.global_position = spawn_origin
-	_get_visual_game_root().add_child(bullet)
-	_visual_snowballs[shot_id] = bullet
-
-@rpc("authority", "reliable")
-func snowball_hit(shot_id: int, position: Vector2) -> void:
-	_apply_snowball_hit(shot_id, position)
-
-func _apply_snowball_hit(shot_id: int, position: Vector2) -> void:
-	var bullet = _visual_snowballs.get(shot_id)
-	if bullet and is_instance_valid(bullet):
-		bullet.global_position = position
-		bullet.queue_free()
-	_visual_snowballs.erase(shot_id)
 
 # --- Геттер для ServerInfo -----------------------------------------------------
 

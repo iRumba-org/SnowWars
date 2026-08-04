@@ -12,7 +12,7 @@ func set_calculation(calc: CalculationBase) -> void:
 		$Camera2D.enabled = true
 		_local_controller = ManualController.new()
 		add_child(_local_controller)
-		_local_controller.shoot_requested.connect(Net.request_shoot)
+		_local_controller.shoot_requested.connect(calculation.request_shoot)
 
 func _process(_delta: float) -> void:
 	if calculation == null:

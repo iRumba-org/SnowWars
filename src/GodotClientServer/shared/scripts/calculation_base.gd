@@ -8,3 +8,9 @@ func request_move_state(_move_vector: Vector2, _aim_angle: float) -> void:
 
 func receive_input(_move_vector: Vector2, _aim_angle: float) -> void:
 	pass
+
+func request_shoot() -> void:
+	push_warning("request_shoot not implemented on %s" % get_class())
+
+func on_snowball_hit(_shot_id: int, _hit_position: Vector2) -> void:
+	pass

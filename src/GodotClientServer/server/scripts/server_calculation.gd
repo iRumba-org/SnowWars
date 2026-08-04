@@ -16,3 +16,29 @@ func submit_move_state(move_vector: Vector2, aim_angle: float) -> void:
 	if multiplayer.get_remote_sender_id() != peer_id:
 		return
 	receive_input(move_vector, aim_angle)
+
+var _next_shot_id_counter: int = 0
+
+@rpc("any_peer", "reliable")
+func submit_shoot() -> void:
+	if multiplayer.get_remote_sender_id() != peer_id:
+		return
+	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
+	var muzzle := CalculationSnowball.compute_muzzle(self)
+	_next_shot_id_counter += 1
+	var shot_id := _next_shot_id_counter
+	CalculationSnowball.spawn_server_snowball(Net._get_server_game_root(), shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
+	spawn_snowball.rpc(shot_id, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED)
+
+@rpc("authority", "reliable")
+func spawn_snowball(_shot_id: int, _direction: Vector2, _speed: float) -> void:
+	pass  # тело не используется — исходящий вызов резолвится в одноимённый
+	      # метод ClientCalculation на том же пути на клиентах
+
+func on_snowball_hit(shot_id: int, hit_position: Vector2) -> void:
+	snowball_hit.rpc(shot_id, hit_position)
+
+@rpc("authority", "reliable")
+func snowball_hit(_shot_id: int, _hit_position: Vector2) -> void:
+	pass  # тело не используется — исходящий вызов резолвится в одноимённый
+	      # метод ClientCalculation на том же пути на клиентах
