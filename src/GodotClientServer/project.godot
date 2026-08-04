@@ -11,13 +11,13 @@ config_version=5
 [application]
 
 config/name="GodotClientServer"
-run/main_scene="res://scenes/Launcher.tscn"
+run/main_scene="res://shared/scenes/Launcher.tscn"
 config/features=PackedStringArray("4.7")
-config/icon="res://assets/icon.svg"
+config/icon="res://shared/assets/icon.svg"
 
 [autoload]
 
-Net="*res://scripts/net.gd"
+Net="*res://shared/scripts/net.gd"
 
 [input]
 

@@ -13,11 +13,11 @@ const BULLET_SPAWN_OFFSET := 45.0
 const RENDER_DELAY_MSEC := 100
 const SNAPSHOT_BUFFER_SIZE := 8
 
-const LEVEL_SCENE := preload("res://scenes/Level.tscn")
-const PLAYER_SCENE := preload("res://scenes/Player.tscn")
-const VISUAL_PLAYER_SCENE := preload("res://scenes/VisualPlayer.tscn")
-const SERVER_SNOWBALL_SCENE := preload("res://scenes/ServerSnowball.tscn")
-const SNOW_BULLET_SCENE := preload("res://scenes/SnowBullet.tscn")
+const LEVEL_SCENE := preload("res://shared/scenes/Level.tscn")
+const PLAYER_SCENE := preload("res://server/scenes/Player.tscn")
+const VISUAL_PLAYER_SCENE := preload("res://client/scenes/VisualPlayer.tscn")
+const SERVER_SNOWBALL_SCENE := preload("res://server/scenes/ServerSnowball.tscn")
+const SNOW_BULLET_SCENE := preload("res://client/scenes/SnowBullet.tscn")
 
 # --- State ---------------------------------------------------------------
 
