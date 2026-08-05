@@ -1,0 +1,40 @@
+name: Feature or refactor
+description: Предложить новую функциональность или рефакторинг
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Опишите предлагаемое изменение и зачем оно нужно.
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание изменения / мотивация
+      description: Что предлагается сделать и какую проблему это решает.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Какой части проекта касается изменение.
+      options:
+        - Networking
+        - Gameplay
+        - Client/View
+        - Server
+        - Infra/Tooling
+    validations:
+      required: true
+  - type: input
+    id: stage
+    attributes:
+      label: Stage
+      description: >-
+        Если изменение относится к конкретному этапу сетевого рефакторинга
+        (см. docs/roadmap.md) — укажите его. Необязательно.
+      placeholder: "например: этап 5"
+    validations:
+      required: false

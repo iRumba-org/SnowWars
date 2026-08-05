@@ -1,0 +1,53 @@
+name: Bug report
+description: Сообщить о баге в SnowWars
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо, что сообщаете о баге. Заполните поля ниже как можно точнее.
+  - type: textarea
+    id: description
+    attributes:
+      label: Описание бага
+      description: Что происходит и в чём проблема.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения
+      description: Как надёжно воспроизвести баг.
+      placeholder: |
+        1. Запустить в режиме ...
+        2. Сделать ...
+        3. Наблюдать ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Фактическое поведение
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      description: Какой части проекта касается баг.
+      options:
+        - Networking
+        - Gameplay
+        - Client/View
+        - Server
+        - Infra/Tooling
+    validations:
+      required: true
