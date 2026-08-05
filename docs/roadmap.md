@@ -151,10 +151,10 @@ RPC `spawn_snowball`/`snowball_hit`, `on_server_snowball_hit` и общим сл
 - `Net.get_known_player_ids()` (публичный, используется `server/scripts/server_info.gd`) не
   поменял сигнатуру, но внутри делегирует в `get_server_calculations()`/
   `get_client_calculations()` вместо прямого чтения своих бывших словарей.
-- Осознанно не тронуто: владение снежками (`_next_shot_id_counter`/`_visual_snowballs` в
-  `ServerCalculation`/`LocalCalculation`/`ClientCalculation`) и то, кто создаёт контейнеры
-  `Game`/`globalServer`/`visual` (`_setup_server_game`/`_setup_client_visual` остались в
-  `Net`) — чтобы не смешивать несколько независимых рефакторингов в одном ревью.
+- Осознанно не тронуто на этом этапе: то, кто создаёт контейнеры `Game`/`globalServer`/`visual`
+  (`_setup_server_game`/`_setup_client_visual` остались в `Net`) — чтобы не смешивать несколько
+  независимых рефакторингов в одном ревью. Владение снежками, тоже сознательно отложенное здесь,
+  перенесено позже, на этапе 4.
 - Разделение `LevelBase` на подклассы `AuthoritativeLevel`/`VisualLevel` рассмотрено и
   отложено: один класс с обеими половинками API достаточен, пока методы не начали заметно
   мешать друг другу.
@@ -163,17 +163,45 @@ RPC `spawn_snowball`/`snowball_hit`, `on_server_snowball_hit` и общим сл
   на удалённые приватные члены `Net` — не найдено). Перед тем как считать этап полностью
   закрытым, стоит вручную прогнать все три режима (SERVER+CLIENT, LOCAL) в редакторе.
 
+### Этап 4 — владение снежками перенесено из Calculation-классов в `LevelBase`
+
+Раньше `_next_shot_id_counter` и `_visual_snowballs` дублировались по трём Calculation-классам
+(`_next_shot_id_counter` — только в `ServerCalculation`; оба поля — в `LocalCalculation`;
+`_visual_snowballs` — только в `ClientCalculation`), и каждый экземпляр вёл свой собственный
+счётчик, поэтому `shot_id` был уникален лишь в пределах одного стрелка. Теперь этим владеет
+`LevelBase` (`shared/scripts/level_base.gd`), по аналогии с этапом 3 (перенос ростера игроков).
+
+- **Авторитетная половина** `LevelBase`: поле `_next_shot_id_counter` и метод
+  `next_shot_id() -> int`, рядом с `get_server_calculations()`.
+- **Визуальная половина** `LevelBase`: поле `_visual_snowballs: Dictionary` (`shot_id` →
+  узел `SnowBullet`) и методы `spawn_visual_snowball(shot_id, origin, direction, speed)` /
+  `finalize_snowball_hit(shot_id, hit_position)`, рядом с `get_client_calculations()`.
+  Оба метода делегируют в уже существующие статические
+  `CalculationSnowball.spawn_visual_snowball`/`finalize_visual_hit`.
+- Ключевое решение: выбран вариант "глобальный счётчик" из двух, упомянутых в предыдущей
+  версии этого раздела (составной ключ `peer_id` + `shot_id` отклонён) — один счётчик на
+  авторитетном `Level`, общий для всех стрелков в матче/процессе, делает `shot_id` глобально
+  уникальным автоматически, без изменения формата ключа словаря `_visual_snowballs`.
+- `ServerCalculation.submit_shoot()` теперь берёт `shot_id` через
+  `Net._get_server_game_root().next_shot_id()`; `LocalCalculation.request_shoot()`/
+  `on_snowball_hit()` и `ClientCalculation.spawn_snowball()`/`snowball_hit()` используют новые
+  методы `Level` через `Net._get_server_game_root()`/`Net._get_visual_game_root()` — та же
+  связь Calculation → Level, что уже использовалась ранее для спавна `ServerSnowball`/
+  `SnowBullet`, новой связи добавлять не потребовалось.
+- `CalculationSnowball` (`shared/scripts/calculation_snowball.gd`) не менялся — его статические
+  методы как были, так и остались; теперь их вызывает `LevelBase`, а не сами
+  Calculation-классы (кроме `spawn_server_snowball`, которую по-прежнему вызывают
+  `ServerCalculation`/`LocalCalculation` напрямую).
+- **Не проверено вручную/headless в реальном Godot**, как и этап 3 — Godot CLI не найден
+  в PATH на машине рефакторинга. Проверена только статика (сверка сигнатур, grep на
+  отсутствие ссылок на удалённые поля `_next_shot_id_counter`/`_visual_snowballs` вне
+  `level_base.gd` — не найдено).
+
 ## Осталось
 
 Ниже — кандидаты на следующие этапы. Порядок и состав **не согласованы окончательно**.
 
-1. **Владение снежками на `Level`.** Открытый вопрос, поднятый на этапе 3 и сознательно
-   отложенный: перенести ли счётчик `shot_id` и словарь визуальных `SnowBullet` с
-   per-player Calculation-классов на `Level`/поле боя, аналогично тому, как на этапе 3
-   туда переехал ростер игроков. Потребует либо глобального счётчика выстрелов, либо
-   составного ключа (`peer_id` + `shot_id`), т.к. сейчас `shot_id` уникален только в
-   пределах одного стрелка.
-2. **Рассмотренная и отклонённая альтернатива (для справки)**: использовать
+1. **Рассмотренная и отклонённая альтернатива (для справки)**: использовать
    высокоуровневые `MultiplayerSpawner`/`MultiplayerSynchronizer` вместо ручных RPC.
    Отклонено, потому что потребовало бы слияния `ServerCalculation`/`ClientCalculation`
    в один реплицируемый тип с ветвлением по authority и замены уже настроенной кастомной

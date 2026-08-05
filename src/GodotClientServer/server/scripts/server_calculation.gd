@@ -17,17 +17,15 @@ func submit_move_state(move_vector: Vector2, aim_angle: float) -> void:
 		return
 	receive_input(move_vector, aim_angle)
 
-var _next_shot_id_counter: int = 0
-
 @rpc("any_peer", "reliable")
 func submit_shoot() -> void:
 	if multiplayer.get_remote_sender_id() != peer_id:
 		return
 	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
 	var muzzle := CalculationSnowball.compute_muzzle(self)
-	_next_shot_id_counter += 1
-	var shot_id := _next_shot_id_counter
-	CalculationSnowball.spawn_server_snowball(Net._get_server_game_root(), shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
+	var level := Net._get_server_game_root()
+	var shot_id := level.next_shot_id()
+	CalculationSnowball.spawn_server_snowball(level, shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
 	spawn_snowball.rpc(shot_id, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED)
 
 @rpc("authority", "reliable")

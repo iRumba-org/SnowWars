@@ -7,9 +7,11 @@ const CLIENT_CALCULATION_SCENE := preload("res://client/scenes/ClientCalculation
 const VIEW_SCENE := preload("res://client/scenes/View.tscn")
 
 var _server_calculations: Dictionary = {} # peer_id:int -> CalculationBase (ServerCalculation/LocalCalculation)
+var _next_shot_id_counter: int = 0
 
 var _client_calculations: Dictionary = {} # peer_id:int -> ClientCalculation
 var _views: Dictionary = {}               # peer_id:int -> View
+var _visual_snowballs: Dictionary = {}    # shot_id:int -> SnowBullet node
 
 func prepare_for_server() -> void:
 	for node in get_tree().get_nodes_in_group("visual_only"):
@@ -58,6 +60,10 @@ func build_roster() -> Array:
 func get_server_calculations() -> Dictionary:
 	return _server_calculations
 
+func next_shot_id() -> int:
+	_next_shot_id_counter += 1
+	return _next_shot_id_counter
+
 # --- Визуальная половина (используется на корне из Net._setup_client_visual) ---
 
 func ensure_client_view(peer_id: int, spawn_position: Vector2, spawn_rotation: float) -> void:
@@ -103,3 +109,9 @@ func get_client_calculation(peer_id: int) -> ClientCalculation:
 
 func get_client_calculations() -> Dictionary:
 	return _client_calculations
+
+func spawn_visual_snowball(shot_id: int, origin: Vector2, direction: Vector2, speed: float) -> void:
+	_visual_snowballs[shot_id] = CalculationSnowball.spawn_visual_snowball(self, origin, direction, speed)
+
+func finalize_snowball_hit(shot_id: int, hit_position: Vector2) -> void:
+	CalculationSnowball.finalize_visual_hit(_visual_snowballs, shot_id, hit_position)
