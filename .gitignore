@@ -1,2 +1,5 @@
 # VSCode-specific ignores
 .vscode/
+
+# Локальное окружение пользователя (см. CLAUDE.md, команда /env)
+LOCALENV.md
