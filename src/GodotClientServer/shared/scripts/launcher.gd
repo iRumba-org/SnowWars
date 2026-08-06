@@ -13,6 +13,8 @@ func _on_server_pressed() -> void:
 	var err := Net.start_server(port)
 	if err != OK:
 		push_error("Net: failed to start server (error %d)" % err)
+		return
+	_spawn_host()
 
 func _on_client_pressed() -> void:
 	var host: String = %HostLineEdit.text
@@ -22,6 +24,21 @@ func _on_client_pressed() -> void:
 	var err := Net.start_client(host, port)
 	if err != OK:
 		push_error("Net: failed to start client (error %d)" % err)
+		return
+	_spawn_host()
 
 func _on_local_pressed() -> void:
 	Net.start_local()
+	_spawn_host()
+
+func _spawn_host() -> void:
+	var host_node := Host.new()
+	host_node.name = "Host"
+	get_tree().root.add_child(host_node)
+	_teardown_self()
+
+func _teardown_self() -> void:
+	var tree := get_tree()
+	tree.current_scene = null
+	tree.root.remove_child(self)
+	queue_free()

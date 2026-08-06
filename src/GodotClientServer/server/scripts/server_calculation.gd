@@ -23,7 +23,7 @@ func submit_shoot() -> void:
 		return
 	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
 	var muzzle := CalculationSnowball.compute_muzzle(self)
-	var level := Net._get_server_game_root()
+	var level := _get_game_root()
 	var shot_id := level.next_shot_id()
 	CalculationSnowball.spawn_server_snowball(level, shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
 	spawn_snowball.rpc(shot_id, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED)
@@ -40,3 +40,8 @@ func on_snowball_hit(shot_id: int, hit_position: Vector2) -> void:
 func snowball_hit(_shot_id: int, _hit_position: Vector2) -> void:
 	pass  # тело не используется — исходящий вызов резолвится в одноимённый
 	      # метод ClientCalculation на том же пути на клиентах
+
+# ServerCalculation спавнится как прямой потомок узла "Game" (см. Lobby._create_game/
+# LevelBase.spawn_authoritative_calculation), поэтому родитель и есть искомый LevelBase.
+func _get_game_root() -> LevelBase:
+	return get_parent()

@@ -17,9 +17,20 @@ func request_move_state(move_vector: Vector2, aim_angle: float) -> void:
 func request_shoot() -> void:
 	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
 	var muzzle := CalculationSnowball.compute_muzzle(self)
-	var shot_id := Net._get_server_game_root().next_shot_id()
-	CalculationSnowball.spawn_server_snowball(Net._get_server_game_root(), shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
-	Net._get_visual_game_root().spawn_visual_snowball(shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED)
+	var game_root := _get_game_root()
+	var visual_root := _get_visual_root()
+	var shot_id := game_root.next_shot_id()
+	CalculationSnowball.spawn_server_snowball(game_root, shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED, self)
+	visual_root.spawn_visual_snowball(shot_id, muzzle.origin, muzzle.direction, CalculationSnowball.SNOWBALL_SPEED)
 
 func on_snowball_hit(shot_id: int, hit_position: Vector2) -> void:
-	Net._get_visual_game_root().finalize_snowball_hit(shot_id, hit_position)
+	_get_visual_root().finalize_snowball_hit(shot_id, hit_position)
+
+# LocalCalculation спавнится как прямой потомок узла "Game" (авторитетный LevelBase). В
+# LOCAL-режиме тот же Lobby ещё держит соседний узел "VisualGame" (визуальный LevelBase) —
+# поднимаемся до Lobby и берём его по имени.
+func _get_game_root() -> LevelBase:
+	return get_parent()
+
+func _get_visual_root() -> LevelBase:
+	return get_parent().get_parent().get_node("VisualGame")

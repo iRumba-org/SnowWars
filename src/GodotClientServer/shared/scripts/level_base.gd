@@ -25,7 +25,7 @@ func _strip_static_objects(node: Node) -> void:
 		else:
 			_strip_static_objects(child)
 
-# --- Авторитетная половина (используется на корне из Net._setup_server_game) ---
+# --- Авторитетная половина (используется на узле "Game", который создаёт Lobby) ---
 
 func spawn_authoritative_calculation(peer_id: int) -> CalculationBase:
 	var calculation: CalculationBase
@@ -64,7 +64,8 @@ func next_shot_id() -> int:
 	_next_shot_id_counter += 1
 	return _next_shot_id_counter
 
-# --- Визуальная половина (используется на корне из Net._setup_client_visual) ---
+# --- Визуальная половина (используется на визуальном LevelBase, который создаёт Lobby: узел
+# "Game" на CLIENT, "VisualGame" в LOCAL-режиме) ---
 
 func ensure_client_view(peer_id: int, spawn_position: Vector2, spawn_rotation: float) -> void:
 	if _client_calculations.has(peer_id):
