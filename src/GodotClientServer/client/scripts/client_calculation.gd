@@ -6,8 +6,10 @@ const SNAPSHOT_BUFFER_SIZE := 8
 
 var _buffer: Array = []   # Array[{position, rotation, time}]
 
-func receive_snapshot(snapshot_position: Vector2, snapshot_rotation: float, snapshot_health: float, time_msec: int) -> void:
+func receive_snapshot(snapshot_position: Vector2, snapshot_rotation: float, snapshot_health: float, snapshot_snowballs: int, snapshot_craft_progress: float, time_msec: int) -> void:
 	health = snapshot_health
+	snowballs = snapshot_snowballs
+	craft_progress = snapshot_craft_progress
 	_buffer.append({"position": snapshot_position, "rotation": snapshot_rotation, "time": time_msec})
 	while _buffer.size() > SNAPSHOT_BUFFER_SIZE:
 		_buffer.pop_front()
