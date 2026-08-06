@@ -63,8 +63,14 @@ func submit_shoot() -> void:
 @rpc("authority", "reliable")
 func spawn_snowball(shot_id: int, direction: Vector2, speed: float) -> void:
 	var origin := global_position + direction * CalculationSnowball.BULLET_SPAWN_OFFSET
-	Net._get_visual_game_root().spawn_visual_snowball(shot_id, origin, direction, speed)
+	_get_visual_root().spawn_visual_snowball(shot_id, origin, direction, speed)
 
 @rpc("authority", "reliable")
 func snowball_hit(shot_id: int, hit_position: Vector2) -> void:
-	Net._get_visual_game_root().finalize_snowball_hit(shot_id, hit_position)
+	_get_visual_root().finalize_snowball_hit(shot_id, hit_position)
+
+# ClientCalculation спавнится как прямой потомок визуального LevelBase (узел "Game" на CLIENT,
+# "VisualGame" в LOCAL-режиме — см. Lobby._create_visual_game/LevelBase.ensure_client_view),
+# поэтому родитель и есть искомый LevelBase.
+func _get_visual_root() -> LevelBase:
+	return get_parent()
