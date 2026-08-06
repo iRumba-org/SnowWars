@@ -2,6 +2,7 @@ class_name View
 extends Node2D
 
 const HEALTH_BAR_OFFSET := Vector2(-30.0, -60.0)
+const CRAFT_PROGRESS_BAR_OFFSET := Vector2(-30.0, -55.0)
 const SNOWBALL_INDICATOR_OFFSET := Vector2(-32.0, -32.0)
 
 var calculation: CalculationBase
@@ -27,7 +28,7 @@ func _process(_delta: float) -> void:
 	$HealthBar.max_value = calculation.max_health
 	$HealthBar.value = calculation.health
 
-	$CraftProgressBar.global_position = calculation.global_position + HEALTH_BAR_OFFSET
+	$CraftProgressBar.global_position = calculation.global_position + CRAFT_PROGRESS_BAR_OFFSET
 	$CraftProgressBar.value = calculation.craft_progress
 
 	$SnowballIndicator.global_position = calculation.global_position + SNOWBALL_INDICATOR_OFFSET
