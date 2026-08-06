@@ -13,10 +13,12 @@ func _ready() -> void:
 func _physics_process(delta: float) -> void:
 	position += direction * speed * delta
 
-func _on_body_entered(_body: Node2D) -> void:
+func _on_body_entered(body: Node2D) -> void:
 	if _already_hit:
 		return
 	_already_hit = true
+	if body is CalculationBase and body != shooter_calculation:
+		body.apply_damage(shooter_calculation)
 	if is_instance_valid(shooter_calculation):
 		shooter_calculation.on_snowball_hit(shot_id, global_position)
 	queue_free()

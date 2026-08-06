@@ -1,10 +1,11 @@
 class_name ServerCalculation
-extends CalculationBase
+extends AuthoritativeCalculation
 
 var _move_vector: Vector2 = Vector2.ZERO
 var _aim_angle: float = 0.0
 
-func _physics_process(_delta: float) -> void:
+func _physics_process(delta: float) -> void:
+	super._physics_process(delta)
 	CalculationPhysics.step(self, _move_vector, _aim_angle)
 
 func receive_input(move_vector: Vector2, aim_angle: float) -> void:

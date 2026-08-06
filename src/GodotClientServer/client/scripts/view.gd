@@ -1,6 +1,8 @@
 class_name View
 extends Node2D
 
+const HEALTH_BAR_OFFSET := Vector2(-30.0, -60.0)
+
 var calculation: CalculationBase
 var _is_local := false
 var _local_controller: ManualController
@@ -19,6 +21,9 @@ func _process(_delta: float) -> void:
 		return
 	global_position = calculation.global_position
 	rotation = calculation.rotation
+	$HealthBar.global_position = calculation.global_position + HEALTH_BAR_OFFSET
+	$HealthBar.max_value = calculation.max_health
+	$HealthBar.value = calculation.health
 
 func _physics_process(_delta: float) -> void:
 	if not _is_local or calculation == null:
