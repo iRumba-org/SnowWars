@@ -34,7 +34,7 @@ func consume_snowball() -> bool:
 	_craft_progress_sec = 0.0
 	return true
 
-func apply_damage(attacker: CalculationBase) -> void:
+func apply_damage(_attacker: CalculationBase) -> void:
 	if health <= 0.0:
 		return
 	health = max(0.0, health - snowball_damage)
