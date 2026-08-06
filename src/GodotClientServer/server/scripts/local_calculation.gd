@@ -16,6 +16,8 @@ func request_move_state(move_vector: Vector2, aim_angle: float) -> void:
 	receive_input(move_vector, aim_angle)
 
 func request_shoot() -> void:
+	if not consume_snowball():
+		return
 	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
 	var muzzle := CalculationSnowball.compute_muzzle(self)
 	var game_root := _get_game_root()
