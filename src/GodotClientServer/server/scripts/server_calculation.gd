@@ -22,6 +22,8 @@ func submit_move_state(move_vector: Vector2, aim_angle: float) -> void:
 func submit_shoot() -> void:
 	if multiplayer.get_remote_sender_id() != peer_id:
 		return
+	if not consume_snowball():
+		return
 	await get_tree().create_timer(CalculationSnowball.THROW_DELAY_SEC).timeout
 	var muzzle := CalculationSnowball.compute_muzzle(self)
 	var level := _get_game_root()
