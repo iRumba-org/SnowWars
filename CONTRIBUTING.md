@@ -29,7 +29,10 @@ Pull Request (см. следующий раздел).
 Схема именования: `тип/issue-слаг`, например `refactor/1-host-lobby-hierarchy` или
 `fix/12-launcher-crash`.
 
-- Тип — `feature`, `fix`, `refactor` или `docs`.
+- Тип — `feature`, `fix`, `refactor`, `docs` или `agent`.
+  - `agent` — правки самой ИИ-команды разработки (`CLAUDE.md`, `.claude/agents`,
+    `.claude/skills`): поведение и инструкции агента, а не код проекта или
+    пользовательская документация. Пример: `agent/3-branch-type-and-status-tracking`.
 - Номер — номер связанного GitHub issue (см. раздел «Issues и Project» выше).
 - Слаг — краткое описание на английском через дефис.
 
