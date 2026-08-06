@@ -9,6 +9,8 @@ var peer_id: int = -1
 @export var snowball_damage: float = 34.0
 @export var health_regen_delay_sec: float = 3.0
 @export var health_regen_per_sec: float = 1.0
+@export var snowballs: int = 3
+var craft_progress: float = 0.0
 
 func _ready() -> void:
 	health = start_health

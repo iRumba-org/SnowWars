@@ -73,6 +73,8 @@ func _broadcast_world_state() -> void:
 			"position": calculation.global_position,
 			"rotation": calculation.rotation,
 			"health": calculation.health,
+			"snowballs": calculation.snowballs,
+			"craft_progress": calculation.craft_progress,
 		}
 	push_world_state.rpc(states)
 
@@ -86,7 +88,7 @@ func _apply_world_state(states: Dictionary) -> void:
 		var state: Dictionary = states[peer_id]
 		var calculation: ClientCalculation = visual_game.get_client_calculation(peer_id)
 		if calculation:
-			calculation.receive_snapshot(state.position, state.rotation, state.health, now)
+			calculation.receive_snapshot(state.position, state.rotation, state.health, state.snowballs, state.craft_progress, now)
 
 # --- Ростер / спавн-деспавн визуальных игроков -------------------------------
 

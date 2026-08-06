@@ -2,6 +2,7 @@ class_name View
 extends Node2D
 
 const HEALTH_BAR_OFFSET := Vector2(-30.0, -60.0)
+const SNOWBALL_INDICATOR_OFFSET := Vector2(-32.0, -32.0)
 
 var calculation: CalculationBase
 var _is_local := false
@@ -21,9 +22,18 @@ func _process(_delta: float) -> void:
 		return
 	global_position = calculation.global_position
 	rotation = calculation.rotation
+
 	$HealthBar.global_position = calculation.global_position + HEALTH_BAR_OFFSET
 	$HealthBar.max_value = calculation.max_health
 	$HealthBar.value = calculation.health
+
+	$CraftProgressBar.global_position = calculation.global_position + HEALTH_BAR_OFFSET
+	$CraftProgressBar.value = calculation.craft_progress
+
+	$SnowballIndicator.global_position = calculation.global_position + SNOWBALL_INDICATOR_OFFSET
+	var snowball_icons := $SnowballIndicator.get_children()
+	for i in snowball_icons.size():
+		snowball_icons[i].visible = i < calculation.snowballs
 
 func _physics_process(_delta: float) -> void:
 	if not _is_local or calculation == null:

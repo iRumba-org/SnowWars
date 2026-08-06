@@ -2,7 +2,6 @@ class_name AuthoritativeCalculation
 extends CalculationBase
 
 @export var max_snowballs: int = 3
-@export var snowballs: int = 3
 @export var start_snowballs: int = 3
 @export var snowball_craft_time_sec: float = 1.5
 
@@ -23,15 +22,20 @@ func _physics_process(delta: float) -> void:
 
 	if snowballs < max_snowballs:
 		_craft_progress_sec += delta
+		craft_progress = clamp(_craft_progress_sec / snowball_craft_time_sec, 0.0, 1.0) if snowball_craft_time_sec > 0.0 else 1.0
 		if _craft_progress_sec >= snowball_craft_time_sec:
 			snowballs += 1
 			_craft_progress_sec = 0.0
+			craft_progress = 0.0
+	else:
+		craft_progress = 0.0
 
 func consume_snowball() -> bool:
 	if snowballs <= 0:
 		return false
 	snowballs -= 1
 	_craft_progress_sec = 0.0
+	craft_progress = 0.0
 	return true
 
 func apply_damage(_attacker: CalculationBase) -> void:
